@@ -15,6 +15,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
     override func viewDidLoad() {
         super.viewDidLoad()
         isbnTexfield.returnKeyType = UIReturnKeyType.Search
+        isbnTexfield.becomeFirstResponder()
         isbnTexfield.delegate = self
     }
 
@@ -39,8 +40,21 @@ class ViewController: UIViewController, UITextFieldDelegate {
         print ("Searching by \(isbnTexfield.text!)")
         let myUrl:String = "https://openlibrary.org/api/books?jscmd=data&format=json&bibkeys=ISBN:\(isbnTexfield.text!)".stringByAddingPercentEscapesUsingEncoding(NSUTF8StringEncoding)!
         let openLibraryURL:NSURL = NSURL(string: myUrl)!
-        let booksData:NSData! = NSData(contentsOfURL: openLibraryURL)!
-        resultTextView.text = String(NSString(data:booksData!, encoding: NSUTF8StringEncoding)!)
+        
+        let request = NSURLRequest(URL: openLibraryURL,
+            cachePolicy: NSURLRequestCachePolicy.ReloadIgnoringLocalAndRemoteCacheData,
+            timeoutInterval: 3)
+        var response: NSURLResponse?
+        do {
+            let booksData = try NSURLConnection.sendSynchronousRequest(request,
+                returningResponse: &response)
+                    resultTextView.text = String(NSString(data:booksData, encoding: NSUTF8StringEncoding)!)
+        } catch{
+            resultTextView.text = "There isn't internet. Check your device config"
+        }
+        
+        
     }
+    
 }
 
