@@ -10,10 +10,15 @@ import UIKit
 
 class ViewController: UIViewController, UITextFieldDelegate {
 
-    @IBOutlet weak var resultTextView: UITextView!
+    @IBOutlet weak var scrollView: UIScrollView!
+    @IBOutlet weak var errorLabel: UILabel!
+    @IBOutlet weak var frontImage: UIImageView!
+    @IBOutlet weak var authorsLabel: UILabel!
+    @IBOutlet weak var bookNameLabel: UILabel!
     @IBOutlet weak var isbnTexfield: UITextField!
     override func viewDidLoad() {
         super.viewDidLoad()
+        scrollView.hidden = true
         isbnTexfield.returnKeyType = UIReturnKeyType.Search
         isbnTexfield.becomeFirstResponder()
         isbnTexfield.delegate = self
@@ -37,6 +42,8 @@ class ViewController: UIViewController, UITextFieldDelegate {
       * given in the isbnTextField and render it in the resultTextView
       */
     func searchBookByISBN(){
+        errorLabel.hidden = true
+        scrollView.hidden = false
         print ("Searching by \(isbnTexfield.text!)")
         let myUrl:String = "https://openlibrary.org/api/books?jscmd=data&format=json&bibkeys=ISBN:\(isbnTexfield.text!)".stringByAddingPercentEscapesUsingEncoding(NSUTF8StringEncoding)!
         let openLibraryURL:NSURL = NSURL(string: myUrl)!
@@ -48,9 +55,34 @@ class ViewController: UIViewController, UITextFieldDelegate {
         do {
             let booksData = try NSURLConnection.sendSynchronousRequest(request,
                 returningResponse: &response)
-                    resultTextView.text = String(NSString(data:booksData, encoding: NSUTF8StringEncoding)!)
+            
+            let json = try NSJSONSerialization.JSONObjectWithData(booksData, options: .MutableLeaves)
+            if((json as! NSDictionary)["ISBN:\(isbnTexfield.text!)"] != nil){
+                let booksMap = (json as! NSDictionary)["ISBN:\(isbnTexfield.text!)"]!
+                let authorsList = booksMap["authors"] as! NSArray
+                var authors: String = ""
+                for author in authorsList {
+                    let authorName : String = author["name"] as! String
+                    authors = "\(authorName)\n"
+                }
+                let bookName : String = booksMap["title"] as! NSString as! String
+                bookNameLabel.text = bookName
+                authorsLabel.text = authors
+                let bookCovers = booksMap["cover"] as! NSDictionary
+                if(bookCovers["medium"] != nil){
+                    let url = NSURL(string: bookCovers["medium"] as! NSString as! String)
+                    let data = NSData(contentsOfURL: url!)
+                    frontImage.image = UIImage(data: data!)
+                }
+            }else{
+                scrollView.hidden = true
+                errorLabel.hidden = false
+                errorLabel.text = "The book doesn't exists"
+            }
         } catch{
-            resultTextView.text = "There isn't internet. Check your device config"
+            scrollView.hidden = true
+            errorLabel.hidden = false
+            errorLabel.text = "There isn't internet. Check your device config"
         }
         
         
